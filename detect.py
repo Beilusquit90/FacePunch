@@ -25,50 +25,61 @@ def highlightFace(net, frame, conf_threshold=0.7):
     return frameOpencvDnn,faceBoxes
 
 
-parser=argparse.ArgumentParser()
-parser.add_argument('--image')
+def get_ages_and_genders():
+    gender_results = []
+    age_results = []
 
-args=parser.parse_args()
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--image')
 
-faceProto="opencv_face_detector.pbtxt"
-faceModel="opencv_face_detector_uint8.pb"
-ageProto="age_deploy.prototxt"
-ageModel="age_net.caffemodel"
-genderProto="gender_deploy.prototxt"
-genderModel="gender_net.caffemodel"
+    args=parser.parse_args()
 
-MODEL_MEAN_VALUES=(78.4263377603, 87.7689143744, 114.895847746)
-ageList=['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
-genderList=['Male','Female']
+    faceProto="opencv_face_detector.pbtxt"
+    faceModel="opencv_face_detector_uint8.pb"
+    ageProto="age_deploy.prototxt"
+    ageModel="age_net.caffemodel"
+    genderProto="gender_deploy.prototxt"
+    genderModel="gender_net.caffemodel"
 
-faceNet=cv2.dnn.readNet(faceModel,faceProto)
-ageNet=cv2.dnn.readNet(ageModel,ageProto)
-genderNet=cv2.dnn.readNet(genderModel,genderProto)
+    MODEL_MEAN_VALUES=(78.4263377603, 87.7689143744, 114.895847746)
+    ageList=['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+    genderList=['Male','Female']
 
-video=cv2.VideoCapture(args.image if args.image else 0)
-padding=20
-hasFrame,frame=video.read()
-# if not hasFrame:
-    # cv2.waitKey()
-resultImg,faceBoxes=highlightFace(faceNet,frame)
-if not faceBoxes:
-    print("No face detected")
+    faceNet=cv2.dnn.readNet(faceModel,faceProto)
+    ageNet=cv2.dnn.readNet(ageModel,ageProto)
+    genderNet=cv2.dnn.readNet(genderModel,genderProto)
 
-for faceBox in faceBoxes:
-    face=frame[max(0,faceBox[1]-padding):
-                min(faceBox[3]+padding,frame.shape[0]-1),max(0,faceBox[0]-padding)
-                :min(faceBox[2]+padding, frame.shape[1]-1)]
+    video=cv2.VideoCapture(args.image if args.image else 0)
+    padding=20
+    hasFrame,frame=video.read()
+    # if not hasFrame:
+        # cv2.waitKey()
+    resultImg,faceBoxes=highlightFace(faceNet,frame)
+    if not faceBoxes:
+        print("No face detected")
 
-    blob=cv2.dnn.blobFromImage(face, 1.0, (227,227), MODEL_MEAN_VALUES, swapRB=False)
-    genderNet.setInput(blob)
-    genderPreds=genderNet.forward()
-    gender=genderList[genderPreds[0].argmax()]
-    print(f'Gender: {gender}')
+    for faceBox in faceBoxes:
+        face=frame[max(0,faceBox[1]-padding):
+                    min(faceBox[3]+padding,frame.shape[0]-1),max(0,faceBox[0]-padding)
+                    :min(faceBox[2]+padding, frame.shape[1]-1)]
 
-    ageNet.setInput(blob)
-    agePreds=ageNet.forward()
-    age=ageList[agePreds[0].argmax()]
-    print(f'Age: {age[1:-1]} years')
+        blob=cv2.dnn.blobFromImage(face, 1.0, (227,227), MODEL_MEAN_VALUES, swapRB=False)
+        genderNet.setInput(blob)
+        genderPreds=genderNet.forward()
+        gender=genderList[genderPreds[0].argmax()]
+        print(f'Gender: {gender}')
+        gender_results.append(gender)
 
-    cv2.putText(resultImg, f'{gender}, {age}', (faceBox[0], faceBox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,255), 2, cv2.LINE_AA)
-    # cv2.imshow("Detecting age and gender", resultImg)
+        ageNet.setInput(blob)
+        agePreds=ageNet.forward()
+        age=ageList[agePreds[0].argmax()]
+        print(f'Age: {age[1:-1]} years')
+        age_results.append(age[1:-1])
+        cv2.putText(resultImg, f'{gender}, {age}', (faceBox[0], faceBox[1]-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,255), 2, cv2.LINE_AA)
+        # cv2.imshow("Detecting age and gender", resultImg)
+        
+    return age_results,gender_results
+
+ages,nenders =get_ages_and_genders()
+print(ages)
+print(nenders)
